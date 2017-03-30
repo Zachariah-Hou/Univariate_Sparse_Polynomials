@@ -1,11 +1,10 @@
 #include <iostream>
+#include <stdio.h>
 #include <string>
 #include <stdlib.h>
 #include <ctype.h>
 #include <math.h>
 #define DEFAULT_SIZE 10
-
-using namespace std;
 
 class UnivariateSparsePolynomials
 {
@@ -15,10 +14,10 @@ private:
 	{
 		static Term* freelist;
 
-		int coef;		// Coefficient of the term
-		int expo;		// Exponent of the term
+		int coef;			// Coefficient of the term
+		int expo;			// Exponent of the term
 
-		Term *next, *prev;		// Pointers
+		Term *next, *prev;	// Pointers
 
 		Term(const int item_A, const int item_B, Term* prevp, Term* nextp)
 		{
@@ -50,10 +49,19 @@ private:
 			freelist = (Term*)ptr;
 		}
 
-	} *curr, *head, *tail;				// Declare the pointers
-	int cnt;							// The length of the list
+		// Reload the operator = to assign polynomials easily
+		Term& operator =(Term& term)
+		{
+			this->coef = term.coef;
+			this->expo = term.expo;
+			this->prev = term.prev;
+			this->next = term.next;
+		}
 
+	} *curr, *head, *tail;	// Declare the pointero
 	Term* Term::freelist = NULL;
+
+	int cnt;				// The length of the list
 
 	// Intialization helper method
 	void init()
@@ -73,13 +81,36 @@ private:
 		}
 	}
 
-	void assert(bool val, string s)
+	// Exchange two nodes in list
+	void exchange(int pos_A, int pos_B)
+	{
+		Term* pTemp = curr,
+			*pntBufferA, *pntBufferB, *pntBufferC, *pntBufferD;
+		moveToPos(pos_A);
+		pntBufferA = curr->next;
+		pntBufferC = pntBufferA->prev;
+		pntBufferD = pntBufferB->next;
+		moveToPos(pos_B);
+		pntBufferB = curr->next;
+		pntBufferA->prev->next = pntBufferA->next->prev = pntBufferB;
+		pntBufferB->prev = pntBufferA->prev;
+		pntBufferB->next = pntBufferA->next;
+		pntBufferA->prev = pntBufferC;
+		pntBufferA->next = pntBufferD;
+		pntBufferC->next = pntBufferD->prev = pntBufferA;
+		curr = pTemp;
+	}
+
+
+	// Check and feedback
+	void assert(bool val, std::string s)
 	{
 		if (!val) {
-			cout << "Assertion Failed: " << s << endl;
+			std::cout << "Assertion Failed: " << s << std::endl;
 			exit(-1);
 		}
 	}
+
 
 public:
 	// Constructor & Destructor
@@ -93,11 +124,12 @@ public:
 	void moveToEnd() { curr = tail->prev; }				// Place curr at list end
 
 	// Move down list to "pos" position 
-	void moveToPos(const int pos)
+	Term& moveToPos(const int pos)
 	{
 		assert((pos >= 0) && (pos <= cnt), "Position out of range");
 		curr = head;
 		for (int i = 0; i < pos; i++) curr = curr->next;
+		return *curr;
 	}
 
 	// Move fence one step right, no change if right is empty
@@ -115,10 +147,9 @@ public:
 	}
 
 	// Insert items at current position
-	void insert(const int& item_A, const int& item_B)
+	void insert(Term* term)
 	{
-		curr->next = curr->next->prev =
-			new Term(item_A, item_B, curr, curr->next);
+		curr->next = curr->next->prev = term;
 		cnt++;
 	}
 
@@ -130,10 +161,73 @@ public:
 		cnt++;
 	}
 
-	friend ostream& operator <<(ostream& os, UnivariateSparsePolynomials& poly)
+	// Input the polynomials and save them in list
+	void input()
 	{
-		char plusSign[] = "", minusSign[] = " - ";
-		for (int i = 0; i < poly.length(); i++) {
+		int coef, expo;
+		//std::cout << "Please input a term in the first polynomial: " << std::endl;
+		for (int i = 1; ; i++) {
+			std::cout << i << ":";
+			std::cout << "\tCoefficient:";
+			std::cin >> coef;
+			if (coef == '\n') {
+				break;
+			}
+			std::cout << "\tExponent:";
+			std::cin >> expo;
+			append(coef, expo);
+		}
+	}
+
+	// Sort and format the input polynomials
+	void sortPolynomial(int low, int high)
+	{
+		if (low >= high) return;
+
+		int	first = low;
+		int last = high;
+		Term key = moveToPos(first);
+
+		while (first < last) {
+			while (first < last && moveToPos(last).expo >= key.expo) {
+				last--;
+			}
+			moveToPos(first) = moveToPos(last);
+			while (first < last && moveToPos(first).expo <= key.expo) {
+				first++;
+			}
+			moveToPos(last) = moveToPos(first);
+		}
+
+		moveToPos(first) = key;
+		sortPolynomial(low, first - 1);
+		sortPolynomial(first + 1, high);
+	}
+
+	// Reload operator + to complete the addition between two polynomials
+	UnivariateSparsePolynomials& operator +(UnivariateSparsePolynomials& poly)
+	{
+		int totalLength = this->getLength() > poly.getLength() ?
+			this->getLength() : poly.getLength();
+		this->moveToStart(); poly.moveToStart();
+		for (int i = 0; i < totalLength; i++) {
+			if (poly.curr->expo < this->curr->expo) {
+				this->insert(poly.curr);
+				poly.next();
+			} else if (poly.curr->expo == this->curr->expo) {
+				this->curr->coef += poly.curr->coef;
+			} else {
+				this->next();
+			}
+		}
+		return *this;
+	}
+
+	// Reload operator << to output the final polynomials
+	friend std::ostream& operator <<(std::ostream& os, UnivariateSparsePolynomials& poly)
+	{
+		std::string plusSign = "", minusSign = " - ";
+		for (int i = 0; i < poly.getLength(); i++) {
 			if (poly.curr->expo == 0) {
 				if (poly.curr->coef < 0) {
 					os << minusSign << poly.curr->coef;
@@ -154,9 +248,23 @@ public:
 				}
 			}
 			if (i == 0) {
-				plusSign[] = " + ";
+				plusSign = " + ";
 			}
 		}
 		return os;
 	}
 };
+
+
+int main()
+{
+	using namespace std;
+	UnivariateSparsePolynomials poly_A, poly_B;
+	cout << "Please input a term in the first polynomial: " << endl;
+	poly_A.input();
+	cout << "Please input a term in the second polynomial: " << endl;
+	poly_B.input();
+	cout << poly_A << endl << poly_B << endl;
+	cout << poly_A + poly_B << endl;
+	return 0;
+}
