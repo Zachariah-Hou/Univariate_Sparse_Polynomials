@@ -12,7 +12,7 @@ private:
 	// Declare the node of the doubly linked list
 	struct Term
 	{
-		static Term* freelist;
+		//static Term* freelist;
 
 		int coef;			// Coefficient of the term
 		int expo;			// Exponent of the term
@@ -32,34 +32,34 @@ private:
 			prev = prevp;
 			next = nextp;
 		}
+		/*		// Overloaded new operator
+				void* operator new(size_t)
+				{
+					if (freelist == NULL) return ::new Term;
+					Term* temp = freelist;
+					freelist = freelist->next;
+					return temp;
+				}
 
-		// Overloaded new operator
-		void* operator new(size_t)
-		{
-			if (freelist == NULL) return ::new Term;
-			Term* temp = freelist;
-			freelist = freelist->next;
-			return temp;
-		}
-
-		// Overloaded delete operator
-		void operator delete(void* ptr)
-		{
-			((Term*)ptr)->next = freelist;
-			freelist = (Term*)ptr;
-		}
-
+				// Overloaded delete operator
+				void operator delete(void* ptr)
+				{
+					((Term*)ptr)->next = freelist;
+					freelist = (Term*)ptr;
+				}*/
 		// Reload the operator = to assign polynomials easily
 		Term& operator =(Term& term)
 		{
 			this->coef = term.coef;
 			this->expo = term.expo;
-			this->prev = term.prev;
-			this->next = term.next;
+			return *this;
 		}
 
 	} *curr, *head, *tail;	// Declare the pointero
-	Term* Term::freelist = NULL;
+
+	// TODO: 完善Freelist
+
+	//Term* Term::freelist = NULL;
 
 	int cnt;				// The length of the list
 
@@ -81,27 +81,6 @@ private:
 		}
 	}
 
-	// Exchange two nodes in list
-	void exchange(int pos_A, int pos_B)
-	{
-		Term* pTemp = curr,
-			*pntBufferA, *pntBufferB, *pntBufferC, *pntBufferD;
-		moveToPos(pos_A);
-		pntBufferA = curr->next;
-		pntBufferC = pntBufferA->prev;
-		pntBufferD = pntBufferB->next;
-		moveToPos(pos_B);
-		pntBufferB = curr->next;
-		pntBufferA->prev->next = pntBufferA->next->prev = pntBufferB;
-		pntBufferB->prev = pntBufferA->prev;
-		pntBufferB->next = pntBufferA->next;
-		pntBufferA->prev = pntBufferC;
-		pntBufferA->next = pntBufferD;
-		pntBufferC->next = pntBufferD->prev = pntBufferA;
-		curr = pTemp;
-	}
-
-
 	// Check and feedback
 	void assert(bool val, std::string s)
 	{
@@ -114,7 +93,7 @@ private:
 
 public:
 	// Constructor & Destructor
-	UnivariateSparsePolynomials(int size = DEFAULT_SIZE) { init(); };
+	UnivariateSparsePolynomials() { init(); };
 	~UnivariateSparsePolynomials() { removeAll(); };
 
 	void clearTheList() { removeAll(); init(); }		// Clear list
@@ -147,9 +126,10 @@ public:
 	}
 
 	// Insert items at current position
-	void insert(Term* term)
+	void insert(const int& item_A, const int& item_B)
 	{
-		curr->next = curr->next->prev = term;
+		curr->next = curr->next->prev =
+			new Term(item_A, item_B, curr, curr->next);
 		cnt++;
 	}
 
@@ -170,13 +150,21 @@ public:
 			std::cout << i << ":";
 			std::cout << "\tCoefficient:";
 			std::cin >> coef;
-			if (coef == '\n') {
-				break;
-			}
+			//if (coef == '#') {
+			//	break;
+			//}
 			std::cout << "\tExponent:";
 			std::cin >> expo;
 			append(coef, expo);
+			curr = tail->prev;
+			std::cout << "\nPress \'N\' to break, or press ENTER to continue.\t";
+			if (getchar() == 'N' || getchar() == 'n') {
+				break;
+			} else {
+				continue;
+			}
 		}
+		sortPolynomial(1, getLength());
 	}
 
 	// Sort and format the input polynomials
@@ -207,48 +195,82 @@ public:
 	// Reload operator + to complete the addition between two polynomials
 	UnivariateSparsePolynomials& operator +(UnivariateSparsePolynomials& poly)
 	{
+		//this->sortPolynomial(1, getLength());
+		//poly.sortPolynomial(1, getLength());
 		int totalLength = this->getLength() > poly.getLength() ?
 			this->getLength() : poly.getLength();
 		this->moveToStart(); poly.moveToStart();
-		for (int i = 0; i < totalLength; i++) {
-			if (poly.curr->expo < this->curr->expo) {
-				this->insert(poly.curr);
+		while (this->curr->next != this->tail || poly.curr->next != poly.tail) {
+			if (poly.curr->next == poly.tail) {
+				this->next();
+			} else if (this->curr->next == this->tail) {
+				this->insert(poly.curr->next->coef, poly.curr->next->expo);
 				poly.next();
-			} else if (poly.curr->expo == this->curr->expo) {
-				this->curr->coef += poly.curr->coef;
+			} else if (poly.curr->next->expo < this->curr->next->expo) {
+				this->insert(poly.curr->next->coef, poly.curr->next->expo);
+				poly.next();
+			} else if (poly.curr->next->expo == this->curr->next->expo) {
+				this->curr->next->coef += poly.curr->next->coef;
+				this->next(); poly.next();
 			} else {
 				this->next();
 			}
 		}
+		this->sortPolynomial(1, this->getLength());
 		return *this;
 	}
 
 	// Reload operator << to output the final polynomials
 	friend std::ostream& operator <<(std::ostream& os, UnivariateSparsePolynomials& poly)
 	{
-		std::string plusSign = "", minusSign = " - ";
+		std::string plusSign = "",	// （实在不会英文了= =）使第一项的系数为正时，前面没有正号
+			minusSign = " - ";
+		poly.moveToStart();
 		for (int i = 0; i < poly.getLength(); i++) {
-			if (poly.curr->expo == 0) {
-				if (poly.curr->coef < 0) {
-					os << minusSign << poly.curr->coef;
+			if (poly.curr->next->expo == 0) {					// 讨论指数为0的情况
+				if (poly.curr->next->coef < 0) {
+					os << minusSign << poly.curr->next->coef;
+					poly.next();
+				} else if (poly.curr->next->coef == 0) {
+					poly.next();
 				} else {
-					os << plusSign << poly.curr->coef;
+					os << plusSign << poly.curr->next->coef;
+					poly.next();
 				}
-			} else if (poly.curr->expo == 1) {
-				if (poly.curr->coef < 0) {
-					os << minusSign << poly.curr->coef << "x";
+			} else if (poly.curr->next->expo == 1) {			// 讨论指数为1的情况
+				if (poly.curr->next->coef < -1) {
+					os << minusSign << poly.curr->next->coef << "x";
+					poly.next();
+				} else if (poly.curr->next->coef == -1) {
+					os << minusSign << "x";
+				} else if (poly.curr->next->coef == 0) {
+					poly.next();
+				} else if (poly.curr->next->coef == 1) {
+					os << plusSign << "x";
+					poly.next();
 				} else {
-					os << plusSign << poly.curr->coef << "x";
+					os << plusSign << poly.curr->next->coef << "x";
+					poly.next();
 				}
-			} else {
-				if (poly.curr->coef < 0) {
-					os << minusSign << poly.curr->coef << "x^" << poly.curr->expo;
+			} else {											// 讨论指数为other的情况
+				if (poly.curr->next->coef < -1) {
+					os << minusSign << poly.curr->next->coef << "x^" << poly.curr->next->expo;
+					poly.next();
+				} else if (poly.curr->next->coef == -1) {
+					os << minusSign << "x^" << poly.curr->next->expo;
+					poly.next();
+				} else if (poly.curr->next->coef == 0) {
+					poly.next();
+				} else if (poly.curr->next->coef == 1) {
+					os << plusSign << "x^" << poly.curr->next->expo;
+					poly.next();
 				} else {
-					os << plusSign << poly.curr->coef << "x^" << poly.curr->expo;
+					os << plusSign << poly.curr->next->coef << "x^" << poly.curr->next->expo;
+					poly.next();
 				}
 			}
 			if (i == 0) {
-				plusSign = " + ";
+				plusSign = " + ";	// （实在不会英文了= =）使第一项之后的系数为正时，前面加上正号
 			}
 		}
 		return os;
@@ -260,11 +282,13 @@ int main()
 {
 	using namespace std;
 	UnivariateSparsePolynomials poly_A, poly_B;
-	cout << "Please input a term in the first polynomial: " << endl;
+	cout << "Please input a term in the first polynomial: \n" << endl;
 	poly_A.input();
-	cout << "Please input a term in the second polynomial: " << endl;
+	//cout << poly_A << endl;
+	cout << "\nPlease input a term in the second polynomial: \n" << endl;
 	poly_B.input();
-	cout << poly_A << endl << poly_B << endl;
-	cout << poly_A + poly_B << endl;
+	cout << "\nThe polynomial A is:\n\n\t\t" << poly_A << endl 
+		<< "\nThe polynomial B is:\n\n\t\t" << poly_B << endl;
+	cout << "\nThe result of A+B is:\n\n\t\t" << poly_A + poly_B << endl;
 	return 0;
 }
