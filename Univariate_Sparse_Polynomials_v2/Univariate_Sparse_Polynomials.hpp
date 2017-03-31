@@ -3,7 +3,6 @@
 #include <string>
 #include <stdlib.h>
 #include <ctype.h>
-#include <math.h>
 #define DEFAULT_SIZE 10
 
 class UnivariateSparsePolynomials
@@ -57,7 +56,7 @@ private:
 
 	} *curr, *head, *tail;	// Declare the pointero
 
-	// TODO: ÍêÉÆFreelist
+	// TODO: å®Œå–„Freelist
 
 	//Term* Term::freelist = NULL;
 
@@ -223,11 +222,11 @@ public:
 	// Reload operator << to output the final polynomials
 	friend std::ostream& operator <<(std::ostream& os, UnivariateSparsePolynomials& poly)
 	{
-		std::string plusSign = "",	// £¨ÊµÔÚ²»»áÓ¢ÎÄÁË= =£©Ê¹µÚÒ»ÏîµÄÏµÊıÎªÕıÊ±£¬Ç°ÃæÃ»ÓĞÕıºÅ
+		std::string plusSign = "",	// ï¼ˆçœŸçš„æ˜¯ä¸ä¼šè‹±æ–‡äº†= =ï¼‰ä½¿ç¬¬ä¸€é¡¹çš„ç³»æ•°ä¸ºæ­£çš„æ—¶å€™ï¼Œé¡¹å‰æ²¡æœ‰æ­£å·
 			minusSign = " - ";
 		poly.moveToStart();
 		for (int i = 0; i < poly.getLength(); i++) {
-			if (poly.curr->next->expo == 0) {					// ÌÖÂÛÖ¸ÊıÎª0µÄÇé¿ö
+			if (poly.curr->next->expo == 0) {					// è€ƒè™‘æŒ‡æ•°ä¸º0çš„æƒ…å†µ
 				if (poly.curr->next->coef < 0) {
 					os << minusSign << poly.curr->next->coef;
 					poly.next();
@@ -237,7 +236,7 @@ public:
 					os << plusSign << poly.curr->next->coef;
 					poly.next();
 				}
-			} else if (poly.curr->next->expo == 1) {			// ÌÖÂÛÖ¸ÊıÎª1µÄÇé¿ö
+			} else if (poly.curr->next->expo == 1) {			// è€ƒè™‘æŒ‡æ•°ä¸º1çš„æƒ…å†µ
 				if (poly.curr->next->coef < -1) {
 					os << minusSign << poly.curr->next->coef << "x";
 					poly.next();
@@ -252,7 +251,7 @@ public:
 					os << plusSign << poly.curr->next->coef << "x";
 					poly.next();
 				}
-			} else {											// ÌÖÂÛÖ¸ÊıÎªotherµÄÇé¿ö
+			} else {											// è€ƒè™‘æŒ‡æ•°ä¸ºå…¶ä»–çš„æƒ…å†µ
 				if (poly.curr->next->coef < -1) {
 					os << minusSign << poly.curr->next->coef << "x^" << poly.curr->next->expo;
 					poly.next();
@@ -270,7 +269,7 @@ public:
 				}
 			}
 			if (i == 0) {
-				plusSign = " + ";	// £¨ÊµÔÚ²»»áÓ¢ÎÄÁË= =£©Ê¹µÚÒ»ÏîÖ®ºóµÄÏµÊıÎªÕıÊ±£¬Ç°Ãæ¼ÓÉÏÕıºÅ
+				plusSign = " + ";	// ï¼ˆçœŸçš„æ˜¯ä¸ä¼šè‹±æ–‡äº†= =ï¼‰ä½¿ç¬¬ä¸€é¡¹ä¹‹åçš„ç³»æ•°ä¸ºæ­£çš„é¡¹å‰åŠ ä¸Šæ­£å·
 			}
 		}
 		return os;
